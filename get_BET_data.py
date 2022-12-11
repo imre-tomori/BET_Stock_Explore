@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
@@ -11,10 +5,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime, timedelta
 from time import sleep
 import os
-
-
-# In[2]:
-
 
 def close_pop_up():
 
@@ -25,10 +15,6 @@ def close_pop_up():
 
     cookie_button.click()
     ticker_button.click()
-
-
-# In[3]:
-
 
 def adatletoltes_section(idoszakos_bontas_value, start_date_formatted, end_date_formatted, adatforma_value, adattipus_value):
     
@@ -63,43 +49,41 @@ def adatletoltes_section(idoszakos_bontas_value, start_date_formatted, end_date_
     adattipus_category = driver.find_element_by_xpath("//ul[@id='select2-dataTypeInput-results']//li[contains(., '" + adattipus_value + "')]")
     adattipus_category.click()
 
-
-# In[19]:
-
-
-def azonnali_piac_section(azonnali_piac_value, first):
+def fill_sections(security_category, first, BET_parameter):
     
     # Indicator check to only open up accordion once
     
     if first:
 
-        # Open up "Azonnali Piac" accordion
+        # Open up accordion
 
-        accordion_banner = driver.find_element_by_id("prompt")
+        accordion_banner = driver.find_element_by_id(BET_parameter[0])
         accordion_banner.click()
     
     # Click "Kategória" drop down
 
-    azonnali_piac = driver.find_element_by_id("select2-promptCategoryInput-container")
-    azonnali_piac.click()
+    section = driver.find_element_by_id(BET_parameter[1])
+    section.click()
     
     # Select the specific category
 
-    azonnali_piac_category = driver.find_element_by_xpath("//ul[@id='select2-promptCategoryInput-results']//li[contains(.,'" + azonnali_piac_value + "')]")
-    azonnali_piac_category.click()
+    section_category = driver.find_element_by_xpath("//ul[@id='" + BET_parameter[2] + "']//li[contains(.,'" + security_category + "')]")
+    section_category.click()
     
     active_elem = driver.switch_to.active_element
     active_elem.send_keys(Keys.ESCAPE)
     
-    azonnali_piac_button = driver.find_element_by_id("promptButton")
-    azonnali_piac_button.click()
+    section_button = driver.find_element_by_id(BET_parameter[3])
+    section_button.click()
 
-
-# In[67]:
-
-
-def get_BET_data(start_date, end_date, azonnali_piac_categories):
+def get_BET_data(start_date, end_date, security_categories):
     
+    # Site parameters to use on BET.hu
+    BET_parameters = ( {
+        'Indexek': ["index","select2-indexCategoryInput-container","select2-indexCategoryInput-results","indexButton"],
+        'Azonnali Piac': ["prompt","select2-promptCategoryInput-container","select2-promptCategoryInput-results","promptButton"]
+    } )
+
     # Clear out download directory
     stock_data_path = os.getcwd() + '\\Stock Data'
     [os.remove(stock_data_path+'\\'+stock_file) for stock_file in os.listdir(stock_data_path)]
@@ -122,8 +106,6 @@ def get_BET_data(start_date, end_date, azonnali_piac_categories):
         driver.get('https://www.bet.hu/oldalak/adatletoltes')
     except:
         print ("Invalid URL")
-        
-    first = True
 
     ## Call functions
 
@@ -133,22 +115,28 @@ def get_BET_data(start_date, end_date, azonnali_piac_categories):
     # Fill out "Adatletöltés" dropdown section
     adatletoltes_section('Naptól napig', start_date, end_date, 'Vesszővel elválasztott (.csv)', 'Részletes (értékek, átlagok, forgalom)')
 
-    # Fill out "Azonnali piac" section
-
-    for azonnali_piac_category in azonnali_piac_categories:
-
-        azonnali_piac_section(azonnali_piac_category, first)
-        
-        sleep(3)
-        first = False
+    # Fill out all sections
     
+    for security_type in security_categories.keys():
+        first = True
+        for security_category in security_categories[security_type]:    
+        
+            fill_sections(security_category, first, BET_parameters[security_type])
+            
+            sleep(3)
+            first = False
+        
     driver.close()
     
-    return str(len(os.listdir(stock_data_path)))+'/'+str(len(azonnali_piac_categories))+ ' files downloaded.'
+    return str(len(os.listdir(stock_data_path)))+'/'+str(sum(len(x) for x in security_categories.values()))+ ' files downloaded.'
 
+# Értékpapír szekciók
 
-# In[68]:
-
+# Indexek: ['Indices']
+# Azonnali piac: ['Részvények Prémium', 'Részvények Standard', 'ETF', 'Investment Certifikát','Turbo Certifikát és Warrant']
+# Származékos piac: -
+# Árupiac: -
+# Béta piac: -
 
 ### Main
 
@@ -160,12 +148,15 @@ if __name__ == "__main__":
     end_date = datetime.today() - timedelta(days=1)
     start_date = end_date - timedelta(days=6*365)
     end_date_formatted, start_date_formatted = end_date.strftime("%Y.%m.%d."), start_date.strftime("%Y.%m.%d.")
-
-    azonnali_piac_categories = ['Részvények Prémium', 'Részvények Standard', 'Részvények T', 'ETF', 'Investment Certifikát']
-    # 'Turbo Certifikát és Warrant' - this one breaks the download for some reason
+    
+    security_categories = (
+        {'Indexek': ['Indices'],
+         'Azonnali Piac': ['Részvények Prémium', 'Részvények Standard', 'ETF', 'Investment Certifikát','Turbo Certifikát és Warrant']}
+    )
+    # 'Turbo Certifikát és Warrant' - this one breaks the download when lookin for more than a year data, for some reason
     
     # Download stock data
     
-    message = get_BET_data(start_date_formatted, end_date_formatted, azonnali_piac_categories)
+    message = get_BET_data(start_date_formatted, end_date_formatted, security_categories)
     print(message)
 
