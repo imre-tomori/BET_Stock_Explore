@@ -1,3 +1,9 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
@@ -5,6 +11,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime, timedelta
 from time import sleep
 import os
+import config
+
+
+# In[2]:
+
 
 def close_pop_up():
 
@@ -15,6 +26,10 @@ def close_pop_up():
 
     cookie_button.click()
     ticker_button.click()
+
+
+# In[3]:
+
 
 def adatletoltes_section(idoszakos_bontas_value, start_date_formatted, end_date_formatted, adatforma_value, adattipus_value):
     
@@ -49,6 +64,10 @@ def adatletoltes_section(idoszakos_bontas_value, start_date_formatted, end_date_
     adattipus_category = driver.find_element_by_xpath("//ul[@id='select2-dataTypeInput-results']//li[contains(., '" + adattipus_value + "')]")
     adattipus_category.click()
 
+
+# In[4]:
+
+
 def fill_sections(security_category, first, BET_parameter):
     
     # Indicator check to only open up accordion once
@@ -76,17 +95,16 @@ def fill_sections(security_category, first, BET_parameter):
     section_button = driver.find_element_by_id(BET_parameter[3])
     section_button.click()
 
-def get_BET_data(start_date, end_date, security_categories):
-    
-    # Site parameters to use on BET.hu
-    BET_parameters = ( {
-        'Indexek': ["index","select2-indexCategoryInput-container","select2-indexCategoryInput-results","indexButton"],
-        'Azonnali Piac': ["prompt","select2-promptCategoryInput-container","select2-promptCategoryInput-results","promptButton"]
-    } )
 
+# In[5]:
+
+
+def get_BET_data(start_date = config.start_date, end_date = config.end_date, security_categories = config.security_categories, delete_current = True):
+    
     # Clear out download directory
     stock_data_path = os.getcwd() + '\\Stock Data'
-    [os.remove(stock_data_path+'\\'+stock_file) for stock_file in os.listdir(stock_data_path)]
+    if delete_current:
+        [os.remove(stock_data_path+'\\'+stock_file) for stock_file in os.listdir(stock_data_path)]
     
     # Set up firefox profile to auto download the files
 
@@ -121,7 +139,7 @@ def get_BET_data(start_date, end_date, security_categories):
         first = True
         for security_category in security_categories[security_type]:    
         
-            fill_sections(security_category, first, BET_parameters[security_type])
+            fill_sections(security_category, first, config.BET_parameters[security_type])
             
             sleep(3)
             first = False
@@ -130,13 +148,9 @@ def get_BET_data(start_date, end_date, security_categories):
     
     return str(len(os.listdir(stock_data_path)))+'/'+str(sum(len(x) for x in security_categories.values()))+ ' files downloaded.'
 
-# Értékpapír szekciók
 
-# Indexek: ['Indices']
-# Azonnali piac: ['Részvények Prémium', 'Részvények Standard', 'ETF', 'Investment Certifikát','Turbo Certifikát és Warrant']
-# Származékos piac: -
-# Árupiac: -
-# Béta piac: -
+# In[7]:
+
 
 ### Main
 
@@ -149,14 +163,8 @@ if __name__ == "__main__":
     start_date = end_date - timedelta(days=6*365)
     end_date_formatted, start_date_formatted = end_date.strftime("%Y.%m.%d."), start_date.strftime("%Y.%m.%d.")
     
-    security_categories = (
-        {'Indexek': ['Indices'],
-         'Azonnali Piac': ['Részvények Prémium', 'Részvények Standard', 'ETF', 'Investment Certifikát','Turbo Certifikát és Warrant']}
-    )
-    # 'Turbo Certifikát és Warrant' - this one breaks the download when lookin for more than a year data, for some reason
-    
     # Download stock data
     
-    message = get_BET_data(start_date_formatted, end_date_formatted, security_categories)
+    message = get_BET_data(start_date_formatted, end_date_formatted, security_categories = config.security_categories)
     print(message)
 
