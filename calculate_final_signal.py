@@ -1,8 +1,21 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
 import pandas as pd
 import os
 from matplotlib import pyplot as pp
 from sklearn import linear_model
 import numpy as np
+import config
+
+
+# ### Funcions
+
+# In[6]:
+
 
 def read_local_stock_files():
     stock_data_path = '.\\Stock Data'
@@ -138,7 +151,7 @@ def calc_final_signal(e_stock):
     return e_stock
 
 
-def visualize_signals(e_stock, lookback_range = 180):
+def visualize_signals(e_stock, lookback_range = config.lookback_range):
     
     pp.figure(figsize=[50,20])
     pp.plot(e_stock['Dátum'], e_stock['Utolsó_ár'])
@@ -168,7 +181,7 @@ def visualize_signals(e_stock, lookback_range = 180):
     pp.legend()
 
     
-def calculate_final_signal_all(MA_lengths, LR_lengths, lookback_range = 180):
+def calculate_final_signal_all(MA_lengths = config.MA_lengths, LR_lengths = config.LR_lengths, lookback_range = config.lookback_range):
     
     df = read_local_stock_files()
 
@@ -195,3 +208,4 @@ def calculate_final_signal_all(MA_lengths, LR_lengths, lookback_range = 180):
                 stocks_with_no_recent_signal.append(e_stock)
                 
     return stocks_with_final_signal, stocks_with_other_signal, stocks_with_no_recent_signal
+
