@@ -27,6 +27,12 @@ start_date_orig = end_date_orig - timedelta(days=2*365) # 2 years
 end_date, start_date = end_date_orig.strftime("%Y.%m.%d."), start_date_orig.strftime("%Y.%m.%d.")
 
 ### Calculation parameters
-lookback_range = 90
-MA_lengths = {'EMA_144': 144, 'EMA_169': 169}
-LR_lengths = {'LR_89':89,'LR_144':144,'LR_169':169}
+lookback_range = 180
+# Fibonacci sequence : 1,1,2,3,5,8,13,21,34,55,89,144,233
+# Fibonacci squared sequance: 1,1,4,64,169,441
+MA_lengths = {'EMA_0': 89, 'EMA_1': 100}
+LR_lengths = {'LR_0':55,'LR_1':89,'LR_2':100}
+#MA_lengths = {'EMA_0': 144, 'EMA_1': 169}
+#LR_lengths = {'LR_0':89,'LR_1':144,'LR_2':169}
+
+

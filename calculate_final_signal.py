@@ -14,7 +14,7 @@ import config
 
 # ### Funcions
 
-# In[6]:
+# In[5]:
 
 
 def read_local_stock_files():
@@ -85,19 +85,25 @@ def set_indicators(e_stock, MA_lengths, LR_lengths):
 
 def calc_final_signal(e_stock):
     
-    rank_all = e_stock[['Utolsó_ár','EMA_144','EMA_169','LR_89','LR_144','LR_169']].rank(axis=1)
-    rank_LR_EMA = e_stock[['EMA_144','EMA_169','LR_89']].rank(axis=1)
+    rank_all = e_stock[['Utolsó_ár', 'EMA_0', 'EMA_1', 'LR_0', 'LR_1', 'LR_2']].rank(axis=1)
+    rank_all_ind = e_stock[['EMA_0', 'EMA_1', 'LR_0', 'LR_1', 'LR_2']].rank(axis=1)
+    rank_LR_EMA = e_stock[['EMA_0', 'EMA_1', 'LR_0']].rank(axis=1)
+    
+    # Determine if we are outside of calculation range.
+    rank_all_ind_buy = rank_all_ind[['LR_0','LR_1','LR_2']] != [1,2,3]
+    rank_all_ind_sell = rank_all_ind[['LR_2','LR_1','LR_0']] != [1,2,3]
+    
     # Buy signal
     # Price is predicted to raise over LR_89/LR_144/LR_169 and eventually above the EMAs.
     # Initial signal is when price touches LR_89.
-    rank_pre_signal_buy = rank_all[['Utolsó_ár','LR_89','LR_144','LR_169']] == [1,2,3,4]
-    rank_init_signal_buy = rank_all[['LR_89','Utolsó_ár','LR_144','LR_169']] == [1,2,3,4]
+    rank_pre_signal_buy = rank_all[['Utolsó_ár','LR_0','LR_1','LR_2']] == [1,2,3,4]
+    rank_init_signal_buy = rank_all[['LR_0','Utolsó_ár','LR_1','LR_2']] == [1,2,3,4]
 
     # Sell signal
     # Price is predicted to fall under LR_89/LR_144/LR_169 and eventually below the EMAs.
     # Initial signal is when price touches LR_89.
-    rank_pre_signal_sell = rank_all[['Utolsó_ár','LR_89','LR_144','LR_169']] == [6,5,4,3]
-    rank_init_signal_sell = rank_all[['LR_89','Utolsó_ár','LR_144','LR_169']] == [6,5,4,3]
+    rank_pre_signal_sell = rank_all[['Utolsó_ár','LR_0','LR_1','LR_2']] == [6,5,4,3]
+    rank_init_signal_sell = rank_all[['LR_0','Utolsó_ár','LR_1','LR_2']] == [6,5,4,3]
 
     e_stock['Buy_pre'] = e_stock['Utolsó_ár'][rank_pre_signal_buy.all(axis=1)]
     e_stock['Buy_init'] = e_stock['Utolsó_ár'][rank_init_signal_buy.all(axis=1)]
@@ -137,21 +143,25 @@ def calc_final_signal(e_stock):
     # Need to make sure only confirmation included, that happen because of the latest init stage.
     e_stock['Sell_init_confirmed'] = e_stock['Utolsó_ár'][e_stock['Sell_pre'].notna()][e_stock['Sell_init_index'].shift(confirm_window).notna() & (e_stock['Sell_init_index'].shift(confirm_window) > e_stock['Entry_point_sell_index'])]
     e_stock['Buy_init_confirmed'] = e_stock['Utolsó_ár'][e_stock['Buy_pre'].notna()][e_stock['Buy_init_index'].shift(confirm_window).notna() & (e_stock['Buy_init_index'].shift(confirm_window) > e_stock['Entry_point_buy_index'])]
-    #Set init confirmed index and forward fill, so final sinal calculation can use it
+    
+    # Set init confirmed index and forward fill, so final signal calculation can use it
     e_stock.loc[e_stock['Sell_init_confirmed'].notna(), 'Sell_init_confirmed_index'] = e_stock.index[e_stock['Sell_init_confirmed'].notna()]
     e_stock.loc[e_stock['Buy_init_confirmed'].notna(), 'Buy_init_confirmed_index'] = e_stock.index[e_stock['Buy_init_confirmed'].notna()]
+    # Zero out values outside of calculation range, so forward dill doesn't spill into future signals.
+    e_stock.loc[rank_all_ind_sell.all(axis=1), 'Sell_init_confirmed_index'] = 0
+    e_stock.loc[rank_all_ind_buy.all(axis=1), 'Buy_init_confirmed_index'] = 0
     e_stock['Sell_init_confirmed_index'] = e_stock['Sell_init_confirmed_index'].fillna(method='ffill')
     e_stock['Buy_init_confirmed_index'] = e_stock['Buy_init_confirmed_index'].fillna(method='ffill')
 
     # Calculate final buy/sell signal
     # Calculate at an entry point, when there has been a confirmation since the last exit point (after the init state)
-    e_stock['Final_signal_sell'] = e_stock['Utolsó_ár'][e_stock['Entry_point_sell'].notna()][e_stock['Sell_init_confirmed_index'] >= e_stock['Exit_point_sell_index']]
-    e_stock['Final_signal_buy'] = e_stock['Utolsó_ár'][e_stock['Entry_point_buy'].notna()][e_stock['Buy_init_confirmed_index'] >= e_stock['Exit_point_buy_index']]
+    e_stock['Final_signal_sell'] = e_stock['Utolsó_ár'][e_stock['Entry_point_sell'].notna()][e_stock['Sell_init_confirmed_index'] > e_stock['Exit_point_sell_index']]
+    e_stock['Final_signal_buy'] = e_stock['Utolsó_ár'][e_stock['Entry_point_buy'].notna()][e_stock['Buy_init_confirmed_index'] > e_stock['Exit_point_buy_index']]
 
     return e_stock
 
 
-def visualize_signals(e_stock, lookback_range = config.lookback_range):
+def visualize_signals(e_stock, lookback_range = config.lookback_range, MA_lengths = config.MA_lengths, LR_lengths = config.LR_lengths):
     
     pp.figure(figsize=[50,20])
     pp.plot(e_stock['Dátum'], e_stock['Utolsó_ár'])
@@ -160,11 +170,11 @@ def visualize_signals(e_stock, lookback_range = config.lookback_range):
     pp.axvline(e_stock['Dátum'][-lookback_range:-lookback_range+1])
     
     #Indicators
-    pp.plot(e_stock['Dátum'], e_stock['EMA_144'], label='EMA_144', color='red')
-    pp.plot(e_stock['Dátum'], e_stock['EMA_169'], label='EMA_169', color='red')
-    pp.plot(e_stock['Dátum'], e_stock['LR_89'], label='Linear Regression Curve 89', color='purple')
-    pp.plot(e_stock['Dátum'], e_stock['LR_144'], label='Linear Regression Curve 144', color='gold')
-    pp.plot(e_stock['Dátum'], e_stock['LR_169'], label='Linear Regression Curve 169', color='brown')
+    pp.plot(e_stock['Dátum'], e_stock['EMA_0'], label='EMA ' + str(MA_lengths['EMA_0']), color='red')
+    pp.plot(e_stock['Dátum'], e_stock['EMA_1'], label='EMA ' + str(MA_lengths['EMA_1']), color='red')
+    pp.plot(e_stock['Dátum'], e_stock['LR_0'], label='Linear Regression Curve ' + str(LR_lengths['LR_0']), color='purple')
+    pp.plot(e_stock['Dátum'], e_stock['LR_1'], label='Linear Regression Curve ' + str(LR_lengths['LR_1']), color='gold')
+    pp.plot(e_stock['Dátum'], e_stock['LR_2'], label='Linear Regression Curve ' + str(LR_lengths['LR_2']), color='brown')
     
     #Buy plot
     pp.plot(e_stock['Dátum'], e_stock['Buy_pre'], label='Buy pre', linestyle = '--', color='#27ae60', linewidth=3)
@@ -179,7 +189,7 @@ def visualize_signals(e_stock, lookback_range = config.lookback_range):
     pp.plot(e_stock['Dátum'], e_stock['Final_signal_sell'], 'v', label='Final Sell Signal', color='#922b21', markersize=15)
     
     pp.legend()
-
+    pp.grid()
     
 def calculate_final_signal_all(MA_lengths = config.MA_lengths, LR_lengths = config.LR_lengths, lookback_range = config.lookback_range):
     
