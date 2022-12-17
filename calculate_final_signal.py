@@ -85,25 +85,33 @@ def set_indicators(e_stock, MA_lengths, LR_lengths):
 
 def calc_final_signal(e_stock):
     
-    rank_all = e_stock[['Utolsó_ár', 'EMA_0', 'EMA_1', 'LR_0', 'LR_1', 'LR_2']].rank(axis=1)
-    rank_all_ind = e_stock[['EMA_0', 'EMA_1', 'LR_0', 'LR_1', 'LR_2']].rank(axis=1)
-    rank_LR_EMA = e_stock[['EMA_0', 'EMA_1', 'LR_0']].rank(axis=1)
+    # Handle high EMA and LR indicators in pairs
+    e_stock['EMA_MIN'] = e_stock[['EMA_0', 'EMA_1']].min(axis=1)
+    e_stock['EMA_MAX'] = e_stock[['EMA_0', 'EMA_1']].max(axis=1)
+    
+    e_stock['LR_MIN'] = e_stock[['LR_1', 'LR_2']].min(axis=1)
+    e_stock['LR_MAX'] = e_stock[['LR_1', 'LR_2']].max(axis=1)
+                                                          
+    rank_all_min = e_stock[['Utolsó_ár', 'LR_0', 'EMA_MIN', 'LR_MIN']].rank(axis=1)
+    rank_all_max = e_stock[['Utolsó_ár', 'LR_0', 'EMA_MAX', 'LR_MAX']].rank(axis=1)
+    
+    #rank_LR_EMA = e_stock[['EMA_0', 'EMA_1', 'LR_0']].rank(axis=1)
     
     # Determine if we are outside of calculation range.
-    rank_all_ind_buy = rank_all_ind[['LR_0','LR_1','LR_2']] != [1,2,3]
-    rank_all_ind_sell = rank_all_ind[['LR_2','LR_1','LR_0']] != [1,2,3]
+    rank_all_ind_buy = rank_all_min[['LR_0', 'LR_MIN', 'EMA_MIN']].rank(axis=1) != [1,2,3]
+    rank_all_ind_sell = rank_all_max[['EMA_MAX', 'LR_MAX', 'LR_0']].rank(axis=1) != [1,2,3]
     
     # Buy signal
     # Price is predicted to raise over LR_89/LR_144/LR_169 and eventually above the EMAs.
     # Initial signal is when price touches LR_89.
-    rank_pre_signal_buy = rank_all[['Utolsó_ár','LR_0','LR_1','LR_2']] == [1,2,3,4]
-    rank_init_signal_buy = rank_all[['LR_0','Utolsó_ár','LR_1','LR_2']] == [1,2,3,4]
+    rank_pre_signal_buy = rank_all_min[['Utolsó_ár','LR_0','LR_MIN', 'EMA_MIN']] == [1,2,3,4]
+    rank_init_signal_buy = rank_all_min[['LR_0','Utolsó_ár','LR_MIN', 'EMA_MIN']] == [1,2,3,4]
 
     # Sell signal
     # Price is predicted to fall under LR_89/LR_144/LR_169 and eventually below the EMAs.
     # Initial signal is when price touches LR_89.
-    rank_pre_signal_sell = rank_all[['Utolsó_ár','LR_0','LR_1','LR_2']] == [6,5,4,3]
-    rank_init_signal_sell = rank_all[['LR_0','Utolsó_ár','LR_1','LR_2']] == [6,5,4,3]
+    rank_pre_signal_sell = rank_all_max[['Utolsó_ár', 'LR_0', 'LR_MAX', 'EMA_MAX']] == [4,3,2,1]
+    rank_init_signal_sell = rank_all_max[['LR_0', 'Utolsó_ár', 'LR_MAX', 'EMA_MAX']] == [4,3,2,1]
 
     e_stock['Buy_pre'] = e_stock['Utolsó_ár'][rank_pre_signal_buy.all(axis=1)]
     e_stock['Buy_init'] = e_stock['Utolsó_ár'][rank_init_signal_buy.all(axis=1)]
@@ -112,11 +120,11 @@ def calc_final_signal(e_stock):
     e_stock['Sell_init'] = e_stock['Utolsó_ár'][rank_init_signal_sell.all(axis=1)]
     #Entry/Exit point
     #Mark where price enters or exits the "init" state.
-    e_stock['Entry_point_sell'] = e_stock['Utolsó_ár'][e_stock['Sell_pre'].shift(1).notna()][e_stock['Sell_init'].notna()]
-    e_stock['Entry_point_buy'] = e_stock['Utolsó_ár'][e_stock['Buy_pre'].shift(1).notna()][e_stock['Buy_init'].notna()]
+    e_stock['Entry_point_sell'] = e_stock['Utolsó_ár'][e_stock['Sell_pre'].shift(1).notna()][e_stock['Sell_init'].notna() & e_stock['Sell_init'].shift(-1).notna()]
+    e_stock['Entry_point_buy'] = e_stock['Utolsó_ár'][e_stock['Buy_pre'].shift(1).notna()][e_stock['Buy_init'].notna() & e_stock['Buy_init'].shift(-1).notna()]
 
-    e_stock['Exit_point_sell'] = e_stock['Utolsó_ár'][e_stock['Sell_init'].shift(1).notna()][e_stock['Sell_pre'].notna()]
-    e_stock['Exit_point_buy'] = e_stock['Utolsó_ár'][e_stock['Buy_init'].shift(1).notna()][e_stock['Buy_pre'].notna()]
+    e_stock['Exit_point_sell'] = e_stock['Utolsó_ár'][e_stock['Sell_init'].shift(1).notna()][e_stock['Sell_pre'].notna() & e_stock['Sell_pre'].shift(-1).notna()]
+    e_stock['Exit_point_buy'] = e_stock['Utolsó_ár'][e_stock['Buy_init'].shift(1).notna()][e_stock['Buy_pre'].notna() & e_stock['Buy_pre'].shift(-1).notna()]
 
     # Set index columns
     # We can use the index values later in the calculations
@@ -138,7 +146,7 @@ def calc_final_signal(e_stock):
 
     # Calculate init confirmation
     # There is a delay to confirm the signal, and price needs to reach the pre signal levels.
-    confirm_window = 30
+    confirm_window = 21
     # Init is confirmed when the prices in the range defined by the confirm_window, goes back to pre state.
     # Need to make sure only confirmation included, that happen because of the latest init stage.
     e_stock['Sell_init_confirmed'] = e_stock['Utolsó_ár'][e_stock['Sell_pre'].notna()][e_stock['Sell_init_index'].shift(confirm_window).notna() & (e_stock['Sell_init_index'].shift(confirm_window) > e_stock['Entry_point_sell_index'])]
@@ -147,9 +155,9 @@ def calc_final_signal(e_stock):
     # Set init confirmed index and forward fill, so final signal calculation can use it
     e_stock.loc[e_stock['Sell_init_confirmed'].notna(), 'Sell_init_confirmed_index'] = e_stock.index[e_stock['Sell_init_confirmed'].notna()]
     e_stock.loc[e_stock['Buy_init_confirmed'].notna(), 'Buy_init_confirmed_index'] = e_stock.index[e_stock['Buy_init_confirmed'].notna()]
-    # Zero out values outside of calculation range, so forward dill doesn't spill into future signals.
-    e_stock.loc[rank_all_ind_sell.all(axis=1), 'Sell_init_confirmed_index'] = 0
-    e_stock.loc[rank_all_ind_buy.all(axis=1), 'Buy_init_confirmed_index'] = 0
+    # Zero out values outside of calculation range, so forward fill doesn't spill into future signals.
+    e_stock.loc[rank_all_ind_sell.any(axis=1), 'Sell_init_confirmed_index'] = 0
+    e_stock.loc[rank_all_ind_buy.any(axis=1), 'Buy_init_confirmed_index'] = 0
     e_stock['Sell_init_confirmed_index'] = e_stock['Sell_init_confirmed_index'].fillna(method='ffill')
     e_stock['Buy_init_confirmed_index'] = e_stock['Buy_init_confirmed_index'].fillna(method='ffill')
 
