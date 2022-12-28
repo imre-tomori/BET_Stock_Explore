@@ -199,6 +199,9 @@ def visualize_signals(e_stock, lookback_range = config.lookback_range, MA_length
     pp.legend()
     pp.grid()
     
+    pp.xticks(e_stock['Dátum'].groupby(e_stock['Dátum'].astype(str).str[:7]).min())
+    pp.setp(pp.gca().xaxis.get_majorticklabels(),'rotation', 90)
+    
 def calculate_final_signal_all(MA_lengths = config.MA_lengths, LR_lengths = config.LR_lengths, lookback_range = config.lookback_range):
     
     df = read_local_stock_files()
