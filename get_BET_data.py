@@ -96,7 +96,7 @@ def fill_sections(security_category, first, BET_parameter):
     section_button.click()
 
 
-# In[5]:
+# In[8]:
 
 
 def get_BET_data(start_date = config.start_date, end_date = config.end_date, security_categories = config.security_categories, delete_current = True):
@@ -141,7 +141,10 @@ def get_BET_data(start_date = config.start_date, end_date = config.end_date, sec
         
             fill_sections(security_category, first, config.BET_parameters[security_type])
             
-            sleep(3)
+            if security_category == 'Turbo Certifikát és Warrant':
+                sleep(30)
+            else:
+                sleep(3)
             first = False
         
     driver.close()
@@ -149,7 +152,7 @@ def get_BET_data(start_date = config.start_date, end_date = config.end_date, sec
     return str(len(os.listdir(stock_data_path)))+'/'+str(sum(len(x) for x in security_categories.values()))+ ' files downloaded.'
 
 
-# In[7]:
+# In[9]:
 
 
 ### Main
@@ -160,7 +163,7 @@ if __name__ == "__main__":
 
     # Max date range is 6 years
     end_date = datetime.today() - timedelta(days=1)
-    start_date = end_date - timedelta(days=6*365)
+    start_date = end_date - timedelta(days=2*365)
     end_date_formatted, start_date_formatted = end_date.strftime("%Y.%m.%d."), start_date.strftime("%Y.%m.%d.")
     
     # Download stock data

@@ -131,4 +131,5 @@ dmypy.json
 # Custom
 
 Stock Data/
+TMP/
 console.ipynb
