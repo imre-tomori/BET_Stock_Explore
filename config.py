@@ -8,12 +8,12 @@ from datetime import datetime, timedelta
     # Származékos piac: -
     # Árupiac: -
     # Béta piac: -
-    
+
+# Securities to inclde in the download
 security_categories = (
     {'Indexek': ['Indices'],
-     'Azonnali Piac': ['Részvények Prémium', 'Részvények Standard', 'ETF', 'Investment Certifikát']}
+     'Azonnali Piac': ['Részvények Prémium', 'Részvények Standard', 'ETF', 'Investment Certifikát', 'Turbo Certifikát és Warrant']}
 )
-# {'Azonnali Piac': ['Turbo Certifikát és Warrant']} - this one breaks the download when lookin for more than 14 months of data, need to request separetly
 
 # Site parameters to use on BET.hu per security category
 BET_parameters = ( {
@@ -27,9 +27,11 @@ start_date_orig = end_date_orig - timedelta(days=4*365) # 4 years
 end_date, start_date = end_date_orig.strftime("%Y.%m.%d."), start_date_orig.strftime("%Y.%m.%d.")
 
 ### Calculation parameters
+
+# Highlights stock if there is a signal in the last x days
 lookback_range = 180
-# Fibonacci sequence : 1,1,2,3,5,8,13,21,34,55,89,144,233
-# Fibonacci squared sequance: 1,1,4,64,169,441
+
+# Set up indicator lengths
 #MA_lengths = {'EMA_0': 89, 'EMA_1': 100}
 #LR_lengths = {'LR_0':55,'LR_1':89,'LR_2':100}
 MA_lengths = {'EMA_0': 144, 'EMA_1': 169}
