@@ -38,4 +38,4 @@ Visalize the data.
 
 Visualization includes a legend to understand the colorcoded indicators. Additional signals higlight the price with red/green color, depending if the stock is under or over valued. Red/Green traingles show potential entry points for short/long positions.
 
-![k%C3%A9p.png](attachment:k%C3%A9p.png)
+![stock_example.png](/stock_example.png)
